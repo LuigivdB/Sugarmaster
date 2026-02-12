@@ -1,18 +1,11 @@
 package com.sugarmaster.worker
 
 import android.content.Context
-import androidx.wear.protolayout.ResourceBuilders
-import androidx.wear.protolayout.TimelineBuilders
-import androidx.wear.tiles.RequestBuilders
-import androidx.wear.tiles.TileBuilders
-import androidx.wear.tiles.TileService
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
 import com.sugarmaster.data.api.LibreLinkUpClient
 import com.sugarmaster.data.repository.GlucoseRepository
 import com.sugarmaster.data.repository.GlucoseResult
@@ -32,7 +25,6 @@ class GlucoseSyncWorker(
         val isLoggedIn = store.isLoggedIn.first()
         if (!isLoggedIn) return Result.success()
 
-        // Ensure API client is configured
         val token = store.token.first()
         val accountId = store.accountId.first()
         val region = store.region.first()
@@ -52,12 +44,7 @@ class GlucoseSyncWorker(
         }
 
         return when (result) {
-            is GlucoseResult.Success -> {
-                // Request tile update
-                TileService.getUpdater(applicationContext)
-                    .requestUpdate(GlucoseTileService::class.java)
-                Result.success()
-            }
+            is GlucoseResult.Success -> Result.success()
             else -> Result.retry()
         }
     }
@@ -79,29 +66,6 @@ class GlucoseSyncWorker(
 
         fun cancel(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
-        }
-    }
-
-    /**
-     * Tile service that displays the current glucose value on the watch face.
-     */
-    class GlucoseTileService : TileService() {
-
-        override fun onTileRequest(request: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
-            val tile = TileBuilders.Tile.Builder()
-                .setResourcesVersion("1")
-                .setTileTimeline(
-                    TimelineBuilders.Timeline.Builder().build()
-                )
-                .build()
-            return Futures.immediateFuture(tile)
-        }
-
-        override fun onTileResourcesRequest(request: RequestBuilders.ResourcesRequest): ListenableFuture<ResourceBuilders.Resources> {
-            val resources = ResourceBuilders.Resources.Builder()
-                .setVersion("1")
-                .build()
-            return Futures.immediateFuture(resources)
         }
     }
 }
