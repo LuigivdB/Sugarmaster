@@ -74,6 +74,7 @@ dependencies {
     // Tiles (for watch face tile)
     implementation("androidx.wear.tiles:tiles:1.4.0")
     implementation("androidx.wear.tiles:tiles-material:1.4.0")
+    implementation("androidx.wear.protolayout:protolayout:1.2.0")
 
     // Guava (for ListenableFuture used by TileService)
     implementation("com.google.guava:guava:33.2.1-android")
