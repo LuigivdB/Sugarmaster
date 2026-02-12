@@ -15,6 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,12 +44,15 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
 import com.sugarmaster.data.model.GlucoseItem
-import com.sugarmaster.data.model.TrendArrow
 import com.sugarmaster.presentation.GlucoseUiState
-import com.sugarmaster.presentation.theme.GlucoseGreen
-import com.sugarmaster.presentation.theme.GlucoseOrange
+import com.sugarmaster.presentation.theme.GlucoseBlue
 import com.sugarmaster.presentation.theme.GlucoseRed
+import com.sugarmaster.presentation.theme.GlucoseWhite
 import com.sugarmaster.presentation.theme.GlucoseYellow
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun GlucoseScreen(
@@ -64,18 +72,12 @@ fun GlucoseScreen(
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black)
                 .padding(horizontal = 8.dp)
         ) {
-            // Patient name
-            if (state.patientName.isNotBlank()) {
-                item {
-                    Text(
-                        text = state.patientName,
-                        style = MaterialTheme.typography.caption2,
-                        color = MaterialTheme.colors.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
+            // Current time at the top
+            item {
+                CurrentTimeDisplay()
             }
 
             // Main glucose value display
@@ -96,13 +98,13 @@ fun GlucoseScreen(
                 }
             }
 
-            // Timestamp
+            // Last reading timestamp
             if (state.timestamp != null) {
                 item {
                     Text(
                         text = formatTimestamp(state.timestamp),
                         style = MaterialTheme.typography.caption3,
-                        color = MaterialTheme.colors.onSurfaceVariant,
+                        color = Color(0xFF666666),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -114,13 +116,13 @@ fun GlucoseScreen(
                     Text(
                         text = state.error,
                         style = MaterialTheme.typography.caption3,
-                        color = MaterialTheme.colors.error,
+                        color = GlucoseRed,
                         textAlign = TextAlign.Center
                     )
                 }
             }
 
-            // Refresh button
+            // Action buttons
             item {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -155,14 +157,40 @@ fun GlucoseScreen(
 }
 
 @Composable
+private fun CurrentTimeDisplay() {
+    var currentTime by remember { mutableStateOf(formatCurrentTime()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = formatCurrentTime()
+            delay(1000L)
+        }
+    }
+
+    Text(
+        text = currentTime,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.Medium,
+        color = Color(0xFF888888),
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+private fun formatCurrentTime(): String {
+    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+    return sdf.format(Date())
+}
+
+@Composable
 private fun GlucoseValueDisplay(state: GlucoseUiState) {
+    // Color based on status: red = too high, white = good, blue = too low
     val glucoseColor = when {
-        state.isLow -> GlucoseRed
-        state.isHigh -> GlucoseOrange
-        state.currentValueMgDl != null && state.currentValueMgDl < 70 -> GlucoseRed
-        state.currentValueMgDl != null && state.currentValueMgDl > 180 -> GlucoseOrange
-        state.currentValueMgDl != null && state.currentValueMgDl > 250 -> GlucoseRed
-        else -> GlucoseGreen
+        state.isLow -> GlucoseBlue
+        state.isHigh -> GlucoseRed
+        state.currentValueMgDl != null && state.currentValueMgDl < 70 -> GlucoseBlue
+        state.currentValueMgDl != null && state.currentValueMgDl > 180 -> GlucoseRed
+        else -> GlucoseWhite
     }
 
     Column(
@@ -173,7 +201,7 @@ private fun GlucoseValueDisplay(state: GlucoseUiState) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // Glucose value
+            // Glucose value — large
             val displayValue = state.currentValue
             if (displayValue != null) {
                 Text(
@@ -182,41 +210,41 @@ private fun GlucoseValueDisplay(state: GlucoseUiState) {
                     } else {
                         displayValue.toInt().toString()
                     },
-                    fontSize = 42.sp,
+                    fontSize = 52.sp,
                     fontWeight = FontWeight.Bold,
                     color = glucoseColor
                 )
             } else {
                 Text(
                     text = "---",
-                    fontSize = 42.sp,
+                    fontSize = 52.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colors.onSurfaceVariant
+                    color = Color(0xFF444444)
                 )
             }
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            // Trend arrow
+            // Trend arrow + unit
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = state.trendArrow.symbol,
-                    fontSize = 24.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
                     color = glucoseColor
                 )
                 Text(
                     text = state.glucoseUnit,
                     fontSize = 9.sp,
-                    color = MaterialTheme.colors.onSurfaceVariant
+                    color = Color(0xFF666666)
                 )
             }
         }
 
-        // Range indicator dot
+        // Status indicator dot
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(6.dp)
                 .background(glucoseColor, CircleShape)
         )
     }
@@ -248,20 +276,20 @@ fun GlucoseMiniGraph(
         val lowY = padding + graphHeight * (1f - (lowThreshold - minVal) / range)
         val highY = padding + graphHeight * (1f - (highThreshold - minVal) / range)
 
-        // Low range line
+        // Low range line (blue zone)
         if (lowThreshold > minVal) {
             drawLine(
-                color = GlucoseYellow.copy(alpha = 0.3f),
+                color = GlucoseBlue.copy(alpha = 0.25f),
                 start = Offset(padding, lowY),
                 end = Offset(size.width - padding, lowY),
                 strokeWidth = 1.dp.toPx()
             )
         }
 
-        // High range line
+        // High range line (red zone)
         if (highThreshold < maxVal) {
             drawLine(
-                color = GlucoseOrange.copy(alpha = 0.3f),
+                color = GlucoseRed.copy(alpha = 0.25f),
                 start = Offset(padding, highY),
                 end = Offset(size.width - padding, highY),
                 strokeWidth = 1.dp.toPx()
@@ -283,7 +311,7 @@ fun GlucoseMiniGraph(
 
         drawPath(
             path = path,
-            color = GlucoseGreen,
+            color = Color.White.copy(alpha = 0.7f),
             style = Stroke(
                 width = 2.dp.toPx(),
                 cap = StrokeCap.Round,
@@ -296,9 +324,9 @@ fun GlucoseMiniGraph(
             val lastX = size.width - padding
             val lastY = padding + graphHeight * (1f - (values.last() - minVal) / range)
             val dotColor = when {
-                values.last() < lowThreshold -> GlucoseRed
-                values.last() > highThreshold -> GlucoseOrange
-                else -> GlucoseGreen
+                values.last() < lowThreshold -> GlucoseBlue
+                values.last() > highThreshold -> GlucoseRed
+                else -> Color.White
             }
             drawCircle(
                 color = dotColor,
@@ -310,8 +338,6 @@ fun GlucoseMiniGraph(
 }
 
 private fun formatTimestamp(timestamp: String): String {
-    // Timestamps come as "M/d/yyyy h:mm:ss a" or similar
-    // Extract just the time portion for the watch display
     return try {
         val parts = timestamp.split(" ")
         if (parts.size >= 2) {

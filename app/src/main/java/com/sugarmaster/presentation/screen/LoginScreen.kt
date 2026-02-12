@@ -1,5 +1,6 @@
 package com.sugarmaster.presentation.screen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -59,6 +60,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.spacedBy(4.dp),
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black)
                 .padding(horizontal = 16.dp)
         ) {
             item {
