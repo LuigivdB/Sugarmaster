@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +28,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import com.sugarmaster.presentation.GlucoseUiState
 import com.sugarmaster.presentation.theme.GlucoseBlue
@@ -35,6 +35,7 @@ import com.sugarmaster.presentation.theme.GlucoseRed
 import com.sugarmaster.presentation.theme.GlucoseWhite
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -42,51 +43,75 @@ import java.util.Locale
 @Composable
 fun GlucoseScreen(
     state: GlucoseUiState,
+    isAmbient: Boolean,
     onRefresh: () -> Unit,
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
 
-    // Time — respects system 12h/24h setting
+    // Time — updates once per minute, synced to the minute boundary
     var currentTime by remember { mutableStateOf(formatTime(context)) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isAmbient) {
         while (true) {
             currentTime = formatTime(context)
-            delay(1000L)
+            // Sleep until the next minute starts
+            val now = Calendar.getInstance()
+            val msUntilNextMinute = (60 - now.get(Calendar.SECOND)) * 1000L -
+                    now.get(Calendar.MILLISECOND)
+            delay(msUntilNextMinute.coerceAtLeast(1000L))
         }
     }
 
-    // Battery level
+    // Battery level — updates every 5 minutes
     var batteryLevel by remember { mutableIntStateOf(getBatteryLevel(context)) }
     LaunchedEffect(Unit) {
         while (true) {
             batteryLevel = getBatteryLevel(context)
-            delay(30_000L)
+            delay(300_000L) // 5 minutes
         }
     }
 
-    // Glucose color
-    val glucoseColor = when {
-        state.isLow -> GlucoseBlue
-        state.isHigh -> GlucoseRed
-        state.currentValueMgDl != null && state.currentValueMgDl < 70 -> GlucoseBlue
-        state.currentValueMgDl != null && state.currentValueMgDl > 180 -> GlucoseRed
-        else -> GlucoseWhite
+    // Glucose color — white only in ambient mode (OLED burn-in protection)
+    val glucoseColor = if (isAmbient) {
+        Color.White
+    } else {
+        when {
+            state.isLow -> GlucoseBlue
+            state.isHigh -> GlucoseRed
+            state.currentValueMgDl != null && state.currentValueMgDl < 70 -> GlucoseBlue
+            state.currentValueMgDl != null && state.currentValueMgDl > 180 -> GlucoseRed
+            else -> GlucoseWhite
+        }
+    }
+
+    // Anti burn-in: shift content slightly each minute in ambient mode
+    val burnInOffset = if (isAmbient) {
+        val minute = Calendar.getInstance().get(Calendar.MINUTE)
+        ((minute % 5) - 2).dp
+    } else {
+        0.dp
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .combinedClickable(
-                onClick = onRefresh,
-                onLongClick = onLogout
+            .offset(x = burnInOffset, y = burnInOffset)
+            .then(
+                if (!isAmbient) {
+                    Modifier.combinedClickable(
+                        onClick = onRefresh,
+                        onLongClick = onLogout
+                    )
+                } else {
+                    Modifier
+                }
             )
     ) {
         // Time at the top
         Text(
             text = currentTime,
-            fontSize = 18.sp,
+            fontSize = if (isAmbient) 16.sp else 18.sp,
             fontWeight = FontWeight.Medium,
             color = Color.White,
             textAlign = TextAlign.Center,
@@ -110,7 +135,7 @@ fun GlucoseScreen(
                     } else {
                         displayValue.toInt().toString()
                     },
-                    fontSize = 64.sp,
+                    fontSize = if (isAmbient) 56.sp else 64.sp,
                     fontWeight = FontWeight.Bold,
                     color = glucoseColor,
                     textAlign = TextAlign.Center
@@ -118,15 +143,15 @@ fun GlucoseScreen(
             } else {
                 Text(
                     text = "---",
-                    fontSize = 64.sp,
+                    fontSize = if (isAmbient) 56.sp else 64.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF444444),
+                    color = if (isAmbient) Color(0xFF333333) else Color(0xFF444444),
                     textAlign = TextAlign.Center
                 )
             }
 
             // Trend arrow + unit below the value
-            if (displayValue != null) {
+            if (displayValue != null && !isAmbient) {
                 Text(
                     text = "${state.trendArrow.symbol}  ${state.glucoseUnit}",
                     fontSize = 14.sp,
@@ -140,7 +165,7 @@ fun GlucoseScreen(
         // Battery percentage at the bottom
         Text(
             text = "${batteryLevel}%",
-            fontSize = 16.sp,
+            fontSize = if (isAmbient) 14.sp else 16.sp,
             fontWeight = FontWeight.Medium,
             color = Color.White,
             textAlign = TextAlign.Center,

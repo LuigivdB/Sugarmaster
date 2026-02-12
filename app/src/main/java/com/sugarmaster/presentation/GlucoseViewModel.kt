@@ -43,9 +43,11 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<GlucoseUiState> = _uiState.asStateFlow()
 
     private var pollingJob: Job? = null
+    private var isAmbient: Boolean = false
 
     companion object {
-        private const val POLL_INTERVAL_MS = 60_000L // 1 minute
+        private const val ACTIVE_POLL_INTERVAL_MS = 60_000L   // 1 minute when screen is on
+        private const val AMBIENT_POLL_INTERVAL_MS = 300_000L // 5 minutes in ambient mode
     }
 
     init {
@@ -60,6 +62,16 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
                 LibreLinkUpClient.setAuth(token, accountId)
 
                 _uiState.value = _uiState.value.copy(isLoggedIn = true)
+                startPolling()
+            }
+        }
+    }
+
+    fun setAmbient(ambient: Boolean) {
+        if (isAmbient != ambient) {
+            isAmbient = ambient
+            // Restart polling with the appropriate interval
+            if (_uiState.value.isLoggedIn) {
                 startPolling()
             }
         }
@@ -132,7 +144,8 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
         pollingJob = viewModelScope.launch {
             while (true) {
                 fetchGlucoseData()
-                delay(POLL_INTERVAL_MS)
+                val interval = if (isAmbient) AMBIENT_POLL_INTERVAL_MS else ACTIVE_POLL_INTERVAL_MS
+                delay(interval)
             }
         }
     }
