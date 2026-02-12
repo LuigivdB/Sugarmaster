@@ -49,7 +49,6 @@ fun SugarmasterApp(isAmbient: Boolean = false) {
         val viewModel: GlucoseViewModel = viewModel()
         val uiState by viewModel.uiState.collectAsState()
 
-        // Tell the ViewModel about ambient state so it can adjust polling
         viewModel.setAmbient(isAmbient)
 
         if (uiState.isLoggedIn) {
@@ -57,7 +56,8 @@ fun SugarmasterApp(isAmbient: Boolean = false) {
                 state = uiState,
                 isAmbient = isAmbient,
                 onRefresh = { viewModel.refreshNow() },
-                onLogout = { viewModel.logout() }
+                onLogout = { viewModel.logout() },
+                onToggleVibration = { viewModel.toggleVibrationAlerts() }
             )
         } else {
             LoginScreen(

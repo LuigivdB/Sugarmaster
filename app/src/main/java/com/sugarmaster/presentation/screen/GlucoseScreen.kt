@@ -3,6 +3,9 @@ package com.sugarmaster.presentation.screen
 import android.content.Context
 import android.os.BatteryManager
 import android.text.format.DateFormat
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -13,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,7 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Text
+import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.material.ToggleChipDefaults
 import com.sugarmaster.presentation.GlucoseUiState
 import com.sugarmaster.presentation.theme.GlucoseBlue
 import com.sugarmaster.presentation.theme.GlucoseRed
@@ -45,16 +53,25 @@ fun GlucoseScreen(
     state: GlucoseUiState,
     isAmbient: Boolean,
     onRefresh: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onToggleVibration: () -> Unit
 ) {
     val context = LocalContext.current
+    var showSettings by remember { mutableStateOf(false) }
+
+    // Auto-dismiss settings overlay after 5 seconds
+    LaunchedEffect(showSettings) {
+        if (showSettings) {
+            delay(5000L)
+            showSettings = false
+        }
+    }
 
     // Time — updates once per minute, synced to the minute boundary
     var currentTime by remember { mutableStateOf(formatTime(context)) }
     LaunchedEffect(isAmbient) {
         while (true) {
             currentTime = formatTime(context)
-            // Sleep until the next minute starts
             val now = Calendar.getInstance()
             val msUntilNextMinute = (60 - now.get(Calendar.SECOND)) * 1000L -
                     now.get(Calendar.MILLISECOND)
@@ -67,11 +84,11 @@ fun GlucoseScreen(
     LaunchedEffect(Unit) {
         while (true) {
             batteryLevel = getBatteryLevel(context)
-            delay(300_000L) // 5 minutes
+            delay(300_000L)
         }
     }
 
-    // Glucose color — white only in ambient mode (OLED burn-in protection)
+    // Glucose color — white only in ambient mode
     val glucoseColor = if (isAmbient) {
         Color.White
     } else {
@@ -84,7 +101,7 @@ fun GlucoseScreen(
         }
     }
 
-    // Anti burn-in: shift content slightly each minute in ambient mode
+    // Anti burn-in offset in ambient mode
     val burnInOffset = if (isAmbient) {
         val minute = Calendar.getInstance().get(Calendar.MINUTE)
         ((minute % 5) - 2).dp
@@ -100,8 +117,10 @@ fun GlucoseScreen(
             .then(
                 if (!isAmbient) {
                     Modifier.combinedClickable(
-                        onClick = onRefresh,
-                        onLongClick = onLogout
+                        onClick = {
+                            if (showSettings) showSettings = false else onRefresh()
+                        },
+                        onLongClick = { showSettings = !showSettings }
                     )
                 } else {
                     Modifier
@@ -150,7 +169,6 @@ fun GlucoseScreen(
                 )
             }
 
-            // Trend arrow + unit below the value
             if (displayValue != null && !isAmbient) {
                 Text(
                     text = "${state.trendArrow.symbol}  ${state.glucoseUnit}",
@@ -174,6 +192,49 @@ fun GlucoseScreen(
                 .padding(bottom = 28.dp)
                 .fillMaxWidth()
         )
+
+        // Settings overlay — appears on long-press
+        AnimatedVisibility(
+            visible = showSettings && !isAmbient,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.92f))
+                    .padding(horizontal = 24.dp, vertical = 40.dp)
+            ) {
+                Text(
+                    text = "Settings",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+
+                ToggleChip(
+                    checked = state.vibrationAlerts,
+                    onCheckedChange = { onToggleVibration() },
+                    label = { Text("Vibrate alerts", fontSize = 12.sp) },
+                    toggleControl = {
+                        ToggleChipDefaults.SwitchIcon(checked = state.vibrationAlerts)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Button(
+                    onClick = onLogout,
+                    colors = ButtonDefaults.secondaryButtonColors(),
+                    modifier = Modifier.size(ButtonDefaults.SmallButtonSize)
+                ) {
+                    Text("Sign out", fontSize = 10.sp)
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,11 @@
 package com.sugarmaster.presentation
 
 import android.app.Application
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.sugarmaster.data.api.LibreLinkUpClient
@@ -31,8 +36,11 @@ data class GlucoseUiState(
     val patientName: String = "",
     val error: String? = null,
     val loginError: String? = null,
-    val glucoseUnit: String = "mg/dL"
+    val glucoseUnit: String = "mg/dL",
+    val vibrationAlerts: Boolean = false
 )
+
+private enum class GlucoseStatus { LOW, NORMAL, HIGH, UNKNOWN }
 
 class GlucoseViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -44,6 +52,7 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
 
     private var pollingJob: Job? = null
     private var isAmbient: Boolean = false
+    private var previousStatus: GlucoseStatus = GlucoseStatus.UNKNOWN
 
     companion object {
         private const val ACTIVE_POLL_INTERVAL_MS = 60_000L   // 1 minute when screen is on
@@ -52,6 +61,10 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         viewModelScope.launch {
+            // Load vibration preference
+            val vibEnabled = credentialStore.vibrationAlerts.first()
+            _uiState.value = _uiState.value.copy(vibrationAlerts = vibEnabled)
+
             val isLoggedIn = credentialStore.isLoggedIn.first()
             if (isLoggedIn) {
                 val token = credentialStore.token.first()
@@ -70,10 +83,17 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
     fun setAmbient(ambient: Boolean) {
         if (isAmbient != ambient) {
             isAmbient = ambient
-            // Restart polling with the appropriate interval
             if (_uiState.value.isLoggedIn) {
                 startPolling()
             }
+        }
+    }
+
+    fun toggleVibrationAlerts() {
+        viewModelScope.launch {
+            val newValue = !_uiState.value.vibrationAlerts
+            credentialStore.setVibrationAlerts(newValue)
+            _uiState.value = _uiState.value.copy(vibrationAlerts = newValue)
         }
     }
 
@@ -94,7 +114,6 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 is GlucoseResult.RegionRedirect -> {
-                    // Retry login with the correct region
                     val retryResult = repository.login(email, password, result.region)
                     when (retryResult) {
                         is GlucoseResult.Success -> {
@@ -129,6 +148,7 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
             pollingJob?.cancel()
             LibreLinkUpClient.clearAuth()
             credentialStore.clear()
+            previousStatus = GlucoseStatus.UNKNOWN
             _uiState.value = GlucoseUiState()
         }
     }
@@ -148,6 +168,29 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
                 delay(interval)
             }
         }
+    }
+
+    private fun getCurrentStatus(isHigh: Boolean, isLow: Boolean, mgDl: Double?): GlucoseStatus {
+        return when {
+            isLow -> GlucoseStatus.LOW
+            isHigh -> GlucoseStatus.HIGH
+            mgDl != null && mgDl < 70 -> GlucoseStatus.LOW
+            mgDl != null && mgDl > 180 -> GlucoseStatus.HIGH
+            mgDl != null -> GlucoseStatus.NORMAL
+            else -> GlucoseStatus.UNKNOWN
+        }
+    }
+
+    private fun vibrateOnce() {
+        val app = getApplication<Application>()
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = app.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            manager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            app.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
     }
 
     private suspend fun fetchGlucoseData() {
@@ -186,13 +229,27 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
                     else -> "mg/dL"
                 }
 
+                val newIsHigh = measurement?.isHigh == true
+                val newIsLow = measurement?.isLow == true
+                val newMgDl = measurement?.valueInMgPerDl
+
+                // Check for threshold crossing
+                val newStatus = getCurrentStatus(newIsHigh, newIsLow, newMgDl)
+                if (_uiState.value.vibrationAlerts &&
+                    previousStatus == GlucoseStatus.NORMAL &&
+                    (newStatus == GlucoseStatus.HIGH || newStatus == GlucoseStatus.LOW)
+                ) {
+                    vibrateOnce()
+                }
+                previousStatus = newStatus
+
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     currentValue = measurement?.value,
-                    currentValueMgDl = measurement?.valueInMgPerDl,
+                    currentValueMgDl = newMgDl,
                     trendArrow = TrendArrow.fromCode(measurement?.trendArrow),
-                    isHigh = measurement?.isHigh == true,
-                    isLow = measurement?.isLow == true,
+                    isHigh = newIsHigh,
+                    isLow = newIsLow,
                     timestamp = measurement?.timestamp,
                     graphItems = data.graphItems,
                     patientName = patientName,
