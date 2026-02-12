@@ -21,6 +21,7 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.ToggleChip
+import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.ToggleChipDefaults
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
@@ -73,7 +74,10 @@ fun SettingsScreen(
                     label = { Text("Vibrate alerts", fontSize = 14.sp) },
                     secondaryLabel = { Text("When sugar goes high or low", fontSize = 11.sp) },
                     toggleControl = {
-                        ToggleChipDefaults.SwitchIcon(checked = state.vibrationAlerts)
+                        Icon(
+                            imageVector = ToggleChipDefaults.switchIcon(checked = state.vibrationAlerts),
+                            contentDescription = null
+                        )
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
