@@ -45,7 +45,6 @@
         <activity
             android:name=".presentation.MainActivity"
             android:exported="true"
-            android:ambientEnabled="true"
             android:taskAffinity=""
             android:theme="@android:style/Theme.DeviceDefault">
             <intent-filter>
