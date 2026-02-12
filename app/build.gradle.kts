@@ -76,7 +76,7 @@ dependencies {
 
     // Wear
     implementation("androidx.wear:wear:1.3.0")
-    implementation("androidx.wear.input:input:1.1.0")
+    implementation("androidx.wear:wear-input:1.2.0")
 
     // Watch Face
     implementation("androidx.wear.watchface:watchface:1.2.1")
