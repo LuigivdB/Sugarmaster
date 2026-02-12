@@ -12,8 +12,8 @@ val GoogleSansFamily = FontFamily.SansSerif
 
 // Glucose status colors
 val GlucoseWhite = Color.White           // In range / good
-val GlucoseBlue = Color(0xFF42A5F5)      // Too low
-val GlucoseRed = Color(0xFFF44336)       // Too high
+val GlucoseBlue = Color(0xFF92D4F0)      // Too low
+val GlucoseRed = Color(0xFFEA7B7A)       // Too high
 val GlucoseYellow = Color(0xFFFFEB3B)    // Graph threshold lines
 
 val WearColors = Colors(
