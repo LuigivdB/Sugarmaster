@@ -75,6 +75,9 @@ dependencies {
     implementation("androidx.wear.tiles:tiles:1.4.0")
     implementation("androidx.wear.tiles:tiles-material:1.4.0")
 
+    // Guava (for ListenableFuture used by TileService)
+    implementation("com.google.guava:guava:33.2.1-android")
+
     // WorkManager for background sync
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 

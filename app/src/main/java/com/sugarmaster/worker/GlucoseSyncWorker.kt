@@ -1,12 +1,18 @@
 package com.sugarmaster.worker
 
 import android.content.Context
+import androidx.wear.tiles.RequestBuilders
+import androidx.wear.tiles.ResourceBuilders
+import androidx.wear.tiles.TileBuilders
 import androidx.wear.tiles.TileService
+import androidx.wear.tiles.TimelineBuilders
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.sugarmaster.data.api.LibreLinkUpClient
 import com.sugarmaster.data.repository.GlucoseRepository
 import com.sugarmaster.data.repository.GlucoseResult
@@ -80,8 +86,22 @@ class GlucoseSyncWorker(
      * Tile service that displays the current glucose value on the watch face.
      */
     class GlucoseTileService : TileService() {
-        // Tile implementation requires ProtoLayout which has significant boilerplate.
-        // For now this serves as the service entry point registered in the manifest.
-        // A full tile implementation can be added as a follow-up enhancement.
+
+        override fun onTileRequest(request: RequestBuilders.TileRequest): ListenableFuture<TileBuilders.Tile> {
+            val tile = TileBuilders.Tile.Builder()
+                .setResourcesVersion("1")
+                .setTileTimeline(
+                    TimelineBuilders.Timeline.Builder().build()
+                )
+                .build()
+            return Futures.immediateFuture(tile)
+        }
+
+        override fun onTileResourcesRequest(request: RequestBuilders.ResourcesRequest): ListenableFuture<ResourceBuilders.Resources> {
+            val resources = ResourceBuilders.Resources.Builder()
+                .setVersion("1")
+                .build()
+            return Futures.immediateFuture(resources)
+        }
     }
 }
