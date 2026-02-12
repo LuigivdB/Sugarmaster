@@ -1,0 +1,45 @@
+package com.sugarmaster.presentation
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sugarmaster.presentation.screen.GlucoseScreen
+import com.sugarmaster.presentation.screen.LoginScreen
+import com.sugarmaster.presentation.theme.SugarmasterTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            SugarmasterApp()
+        }
+    }
+}
+
+@Composable
+fun SugarmasterApp() {
+    SugarmasterTheme {
+        val viewModel: GlucoseViewModel = viewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        if (uiState.isLoggedIn) {
+            GlucoseScreen(
+                state = uiState,
+                onRefresh = { viewModel.refreshNow() },
+                onLogout = { viewModel.logout() }
+            )
+        } else {
+            LoginScreen(
+                isLoading = uiState.isLoading,
+                error = uiState.loginError,
+                onLogin = { email, password, region ->
+                    viewModel.login(email, password, region)
+                }
+            )
+        }
+    }
+}

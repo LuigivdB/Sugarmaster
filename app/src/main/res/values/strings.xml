@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sugarmaster</string>
+    <string name="login_title">Sugarmaster</string>
+    <string name="email_hint">LibreLinkUp Email</string>
+    <string name="password_hint">Password</string>
+    <string name="login_button">Sign In</string>
+    <string name="logout_button">Log Out</string>
+    <string name="loading">Loading…</string>
+    <string name="no_data">No data</string>
+    <string name="mg_dl">mg/dL</string>
+    <string name="mmol_l">mmol/L</string>
+    <string name="last_updated">Updated %1$s</string>
+    <string name="trend_stable">→</string>
+    <string name="trend_rising">↑</string>
+    <string name="trend_rising_fast">↑↑</string>
+    <string name="trend_falling">↓</string>
+    <string name="trend_falling_fast">↓↓</string>
+    <string name="login_failed">Login failed. Check credentials.</string>
+    <string name="network_error">Network error. Retry later.</string>
+    <string name="region_hint">Region (e.g. eu, us)</string>
+</resources>

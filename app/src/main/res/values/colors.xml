@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#1A1A2E</color>
+    <color name="glucose_green">#4CAF50</color>
+    <color name="glucose_yellow">#FFEB3B</color>
+    <color name="glucose_orange">#FF9800</color>
+    <color name="glucose_red">#F44336</color>
+    <color name="primary">#8ECAE6</color>
+</resources>
