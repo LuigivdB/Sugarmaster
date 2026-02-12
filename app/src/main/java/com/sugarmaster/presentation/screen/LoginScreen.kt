@@ -1,16 +1,14 @@
 package com.sugarmaster.presentation.screen
 
+import android.app.RemoteInput
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,17 +17,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.PositionIndicator
@@ -37,6 +34,11 @@ import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
+import androidx.wear.input.RemoteInputIntentHelper
+
+private const val KEY_EMAIL = "email"
+private const val KEY_PASSWORD = "password"
+private const val KEY_REGION = "region"
 
 @Composable
 fun LoginScreen(
@@ -47,6 +49,33 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var region by remember { mutableStateOf("eu") }
+
+    val emailLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        result.data?.let { data ->
+            val results = RemoteInput.getResultsFromIntent(data)
+            results?.getCharSequence(KEY_EMAIL)?.toString()?.let { email = it }
+        }
+    }
+
+    val passwordLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        result.data?.let { data ->
+            val results = RemoteInput.getResultsFromIntent(data)
+            results?.getCharSequence(KEY_PASSWORD)?.toString()?.let { password = it }
+        }
+    }
+
+    val regionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        result.data?.let { data ->
+            val results = RemoteInput.getResultsFromIntent(data)
+            results?.getCharSequence(KEY_REGION)?.toString()?.let { region = it }
+        }
+    }
 
     val listState = rememberScalingLazyListState()
 
@@ -73,28 +102,53 @@ fun LoginScreen(
             }
 
             item {
-                WearTextField(
+                InputChip(
+                    label = "Email",
                     value = email,
-                    onValueChange = { email = it },
-                    placeholder = "Email",
-                    keyboardType = KeyboardType.Email
+                    onClick = {
+                        val remoteInputs = listOf(
+                            RemoteInput.Builder(KEY_EMAIL)
+                                .setLabel("Email")
+                                .build()
+                        )
+                        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+                        RemoteInputIntentHelper.putRemoteInputsExtra(intent, remoteInputs)
+                        emailLauncher.launch(intent)
+                    }
                 )
             }
 
             item {
-                WearTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    placeholder = "Password",
-                    isPassword = true
+                InputChip(
+                    label = "Password",
+                    value = if (password.isEmpty()) "" else "\u2022".repeat(password.length),
+                    onClick = {
+                        val remoteInputs = listOf(
+                            RemoteInput.Builder(KEY_PASSWORD)
+                                .setLabel("Password")
+                                .build()
+                        )
+                        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+                        RemoteInputIntentHelper.putRemoteInputsExtra(intent, remoteInputs)
+                        passwordLauncher.launch(intent)
+                    }
                 )
             }
 
             item {
-                WearTextField(
+                InputChip(
+                    label = "Region",
                     value = region,
-                    onValueChange = { region = it },
-                    placeholder = "Region (eu, us...)"
+                    onClick = {
+                        val remoteInputs = listOf(
+                            RemoteInput.Builder(KEY_REGION)
+                                .setLabel("Region (eu, us, ap...)")
+                                .build()
+                        )
+                        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+                        RemoteInputIntentHelper.putRemoteInputsExtra(intent, remoteInputs)
+                        regionLauncher.launch(intent)
+                    }
                 )
             }
 
@@ -132,40 +186,24 @@ fun LoginScreen(
 }
 
 @Composable
-private fun WearTextField(
+private fun InputChip(
+    label: String,
     value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    isPassword: Boolean = false,
-    keyboardType: KeyboardType = KeyboardType.Text
+    onClick: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (value.isEmpty()) {
+    Chip(
+        onClick = onClick,
+        label = {
             Text(
-                text = placeholder,
-                style = MaterialTheme.typography.caption2,
-                color = MaterialTheme.colors.onSurfaceVariant
+                text = if (value.isEmpty()) label else value,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-        }
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            textStyle = TextStyle(
-                color = Color.White,
-                fontSize = 14.sp
-            ),
-            cursorBrush = SolidColor(MaterialTheme.colors.primary),
-            visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-        )
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-        )
-    }
+        },
+        secondaryLabel = if (value.isNotEmpty()) {
+            { Text(text = label, style = MaterialTheme.typography.caption3) }
+        } else null,
+        colors = ChipDefaults.secondaryChipColors(),
+        modifier = Modifier.fillMaxWidth()
+    )
 }

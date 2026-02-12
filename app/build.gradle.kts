@@ -76,6 +76,7 @@ dependencies {
 
     // Wear
     implementation("androidx.wear:wear:1.3.0")
+    implementation("androidx.wear.input:input:1.1.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling:1.6.8")
 }
