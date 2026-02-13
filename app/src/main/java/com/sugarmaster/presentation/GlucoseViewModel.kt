@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class GlucoseUiState(
+    val isInitializing: Boolean = true,
     val isLoggedIn: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
@@ -36,6 +37,7 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
             val vibEnabled = credentialStore.vibrationAlerts.first()
             val isLoggedIn = credentialStore.isLoggedIn.first()
             _uiState.value = _uiState.value.copy(
+                isInitializing = false,
                 isLoggedIn = isLoggedIn,
                 vibrationAlerts = vibEnabled
             )
@@ -98,7 +100,7 @@ class GlucoseViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             LibreLinkUpClient.clearAuth()
             credentialStore.clear()
-            _uiState.value = GlucoseUiState()
+            _uiState.value = GlucoseUiState(isInitializing = false)
         }
     }
 }
